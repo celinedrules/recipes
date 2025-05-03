@@ -1,0 +1,14 @@
+:root {
+  --bs-dark: rgb(33, 37, 41);
+  --padding-side: 5em;
+  --main-bg: #f3f3f3;
+  --container-bg: #fff;
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  font-family: "Rubik", sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0 var(--padding-side);
+  background: var(--main-bg) url("../../public/images/i-like-food.svg");
+}
