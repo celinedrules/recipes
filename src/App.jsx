@@ -42,7 +42,7 @@ function App() {
                     <Route path="/" element={<Home categories={categories}/>}/>
                     <Route path="categories" element={<ExploreCategories categories={categories}/>}/>
                     <Route path="categories/:categoryName" element={<CategoryPage/>}/>
-                    <Route path="/recipe/:id" element={<Recipe/>}/>
+                    <Route path="/recipe/:slug" element={<Recipe/>}/>
                     {/*<Route path="/submitPage" element={<SubmitPage/>}/>*/}
                     <Route
                         path="/submitPage"

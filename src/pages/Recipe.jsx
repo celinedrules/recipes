@@ -1,10 +1,11 @@
-﻿import {useParams} from "react-router-dom";
-import {useEffect, useState} from "react";
-import {supabase} from "../lib/supabase.js";
+﻿// src/pages/Recipe.jsx
+import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase.js";
 import "../components/Recipes/Recipes.scss";
 
 const Recipe = () => {
-    const {id} = useParams();
+    const { slug } = useParams();          // ← grab slug instead of id
     const [recipe, setRecipe] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -12,16 +13,18 @@ const Recipe = () => {
     useEffect(() => {
         const fetchRecipe = async () => {
             setLoading(true);
-            const {data, error} = await supabase
-                .from("recipes")       // your table name
-                .select(`*,
-                    categories (
-                        id,
-                        name
-                    )
-                `)           // or list the columns you need
-                .eq("id", id)          // match the route param
-                .single();             // shorthand for expecting exactly one row
+
+            const { data, error } = await supabase
+                .from("recipes")                 // your table name
+                .select(`
+          *,
+          categories (
+            id,
+            name
+          )
+        `)
+                .eq("slug", slug)                // ← filter by slug
+                .single();                       // expect exactly one row
 
             if (error) {
                 console.error("Error fetching recipe:", error);
@@ -29,25 +32,26 @@ const Recipe = () => {
             } else {
                 setRecipe(data);
             }
+
             setLoading(false);
         };
 
         fetchRecipe();
-    }, [id]);
+    }, [slug]);                            // ← re-run when slug changes
 
-    if (loading) return <p>Loading...</p>;
-    if (error) return <p>Error loading recipe: {error.message}</p>;
-    if (!recipe) return <p>No recipe found.</p>;
+    if (loading)  return <p>Loading...</p>;
+    if (error)    return <p>Error loading recipe: {error.message}</p>;
+    if (!recipe)  return <p>No recipe found.</p>;
 
     return (
         <div className="recipe">
             <div className="container">
                 {/* Image column */}
                 <div className="image-col">
-                    {console.log(recipe.name)}
                     <img
                         src={recipe.image_url}
                         alt={recipe.name}
+                        loading="lazy"
                     />
                 </div>
 
