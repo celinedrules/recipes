@@ -48,6 +48,10 @@ const SubmitPage = () => {
         }
     };
 
+    const handleRemoveIngredient = (idxToRemove) => {
+        setIngredients(prev => prev.filter((_, idx) => idx !== idxToRemove));
+    };
+
     // handle adding a direction step
     const handleAddDirection = () => {
         const trimmed = directionInput.trim();
@@ -55,6 +59,10 @@ const SubmitPage = () => {
             setDirections(prev => [...prev, trimmed]);
             setDirectionInput('');
         }
+    };
+
+    const handleRemoveDirection = (idxToRemove) => {
+        setDirections(prev => prev.filter((_, idx) => idx !== idxToRemove));
     };
 
     // browse button click => open file picker
@@ -196,7 +204,16 @@ const SubmitPage = () => {
                         {ingredients.length > 0 && (
                             <ul className="item-list">
                                 {ingredients.map((ing, idx) => (
-                                    <li key={idx}>{ing}</li>
+                                    <li key={idx}>
+                                        {ing}
+                                        <button
+                                            type="button"
+                                            className="remove"
+                                            onClick={() => handleRemoveIngredient(idx)}
+                                            >
+                                            x
+                                        </button>
+                                    </li>
                                 ))}
                             </ul>
                         )}
@@ -218,8 +235,17 @@ const SubmitPage = () => {
                         </div>
                         {directions.length > 0 && (
                             <ol className="item-list">
-                                {directions.map((step, idx) => (
-                                    <li key={idx}>{step}</li>
+                                {directions.map((ing, idx) => (
+                                    <li key={idx}>
+                                        {ing}
+                                        <button
+                                            type="button"
+                                            className="remove"
+                                            onClick={() => handleRemoveDirection(idx)}
+                                        >
+                                            x
+                                        </button>
+                                    </li>
                                 ))}
                             </ol>
                         )}

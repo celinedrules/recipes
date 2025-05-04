@@ -127,6 +127,37 @@
         grid-column: 2;
         margin-top: 0.5rem;
         width: 95%;
+        list-style: disc inside;
+        padding-left: 1rem;
+
+        li {
+          position: relative;      // establish positioning context
+          padding-right: 2.5rem;   // give space for the remove button
+
+          .li-content {
+            display: block;        // use block so marker lives on the li
+          }
+
+          button.remove {
+            position: absolute;     // take it out of flow
+            right: 0.5rem;          // bump in from the right edge
+            top: 50%;               // halfway down the LI
+            transform: translateY(-50%);  // shift up half its own height
+            background: none;
+            border: none;
+            color: #dc3545;
+            font-size: 1.25rem;
+            line-height: 1;
+            cursor: pointer;
+          }
+        }
+      }
+
+      ol.item-list {
+        /* keep the “inside” positioning but change to decimal markers */
+        list-style-type: decimal;
+        list-style-position: inside;
+        padding-left: 1rem;  /* same left‐offset as bullets */
       }
     }
 
