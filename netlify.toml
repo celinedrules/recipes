@@ -1,9 +1,18 @@
 [build]
-  command   = "npm run build"
-  publish   = "dist"
+  command = "npm run build"
+  publish = "dist"
 
+# 1) Serve real JS/CSS under /assets directly
 [[redirects]]
-  from    = "/*"
-  to      = "/index.html"
-  status  = 200
-  force   = true
+  from   = "/assets/*"
+  to     = "/assets/:splat"
+  status = 200
+  force  = false
+
+# 2) Then catch all other paths (including /recipe/anything)
+#    and serve index.html so React Router can handle it
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
+  force  = true
