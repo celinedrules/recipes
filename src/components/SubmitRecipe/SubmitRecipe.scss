@@ -133,14 +133,35 @@
         li {
           position: relative;      // establish positioning context
           padding-right: 2.5rem;   // give space for the remove button
+          cursor: grab;
 
           .li-content {
             display: block;        // use block so marker lives on the li
           }
 
+          &:hover {
+            background: rgba(0, 0, 0, 0.03);    // subtle hover highlight
+          }
+
+          &.dragging {
+            background: rgba(0, 0, 0, 0.1);     // stronger highlight when dragging
+            cursor: grabbing;
+          }
+
+          span {
+            align-items: center;
+
+            &::before {
+              content: '⋮⋮';
+              margin-right: 0.5rem;
+              color: #888;
+              cursor: grab;
+            }
+          }
+
           button.remove {
             position: absolute;     // take it out of flow
-            right: 0.5rem;          // bump in from the right edge
+            right: -2rem;          // bump in from the right edge
             top: 50%;               // halfway down the LI
             transform: translateY(-50%);  // shift up half its own height
             background: none;
@@ -151,6 +172,10 @@
             cursor: pointer;
           }
         }
+      }
+
+      .item-list li:empty {
+        list-style-type: none;
       }
 
       ol.item-list {
