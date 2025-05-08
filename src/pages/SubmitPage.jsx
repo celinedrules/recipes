@@ -1,6 +1,7 @@
-﻿import React, {useState, useEffect, useRef} from 'react';
-import {supabase} from '../lib/supabase';
-import Reorder from "../utils/reorder.js";
+﻿// src/pages/SubmitPage.jsx
+import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabase';
+import Reorder from '../utils/reorder.js';
 import {
     DragDropContext,
     Droppable,
@@ -8,117 +9,235 @@ import {
 } from '@hello-pangea/dnd';
 import "../components/SubmitRecipe/SubmitRecipe.scss";
 
-const SubmitPage = () => {
-    // form field state
+export default function SubmitPage() {
+    // form fields
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [email, setEmail] = useState('');
     const [categoryId, setCategoryId] = useState('');
+    const [categories, setCategories] = useState([]);
 
-    // ingredients
-    const [ingredientInput, setIngredientInput] = useState('');
-    const [ingredients, setIngredients] = useState([]);
-    const handleAddIngredient = () => {
-        const trimmed = ingredientInput.trim();
-        if (trimmed) {
-            setIngredients((prev) => [...prev, trimmed]);
-            setIngredientInput('');
+    // ingredient sections
+    const [sections, setSections] = useState([
+        {
+            id: `sec-${Date.now()}`,
+            title: 'Main Ingredients',
+            input: '',
+            items: []
         }
-    };
-    const handleRemoveIngredient = (idx) => {
-        setIngredients((prev) => prev.filter((_, i) => i !== idx));
-    };
+    ]);
 
-    // directions
+    // directions (flat)
     const [directionInput, setDirectionInput] = useState('');
     const [directions, setDirections] = useState([]);
-    const handleAddDirection = () => {
-        const trimmed = directionInput.trim();
-        if (trimmed) {
-            setDirections((prev) => [...prev, trimmed]);
-            setDirectionInput('');
-        }
-    };
-    const handleRemoveDirection = (idx) => {
-        setDirections((prev) => prev.filter((_, i) => i !== idx));
-    };
-    const handleDragEnd = (result) => {
-        const { source, destination} = result;
-        if (!destination || source.index === destination.index) return;
 
-        if (source.droppableId === 'directions') {
-            setDirections(dirs => Reorder(dirs, source.index, destination.index));
-        } else if (source.droppableId === 'ingredients') {
-            setIngredients(ings => Reorder(ings, source.index, destination.index));
-        }
-    };
-
-    // image upload state
+    // image upload
     const [imageFile, setImageFile] = useState(null);
     const [imageFileName, setImageFileName] = useState('');
     const fileInputRef = useRef(null);
+
+    // fetch categories on mount
+    useEffect(() => {
+        supabase
+            .from('categories')
+            .select('id,name')
+            .order('name', { ascending: true })
+            .then(({ data, error }) => {
+                if (error) console.error(error);
+                else setCategories(data || []);
+            });
+    }, []);
+
+    // SECTION handlers
+    const handleSectionTitleChange = (secId, text) => {
+        setSections(secs =>
+            secs.map(s => s.id === secId ? { ...s, title: text } : s)
+        );
+    };
+    const handleSectionInputChange = (secId, text) => {
+        setSections(secs =>
+            secs.map(s => s.id === secId ? { ...s, input: text } : s)
+        );
+    };
+    const handleAddSection = () => {
+        setSections(secs => [
+            ...secs,
+            { id: `sec-${Date.now()}`, title: 'New Section', input: '', items: [] }
+        ]);
+    };
+    const handleRemoveSection = secId => {
+        setSections(secs => secs.filter(s => s.id !== secId));
+    };
+    const handleAddItem = secId => {
+        setSections(secs =>
+            secs.map(s => {
+                if (s.id !== secId) return s;
+                const trimmed = s.input.trim();
+                if (!trimmed) return s;
+                return { ...s, items: [...s.items, trimmed], input: '' };
+            })
+        );
+    };
+    const handleRemoveItem = (secId, idx) => {
+        setSections(secs =>
+            secs.map(s => s.id !== secId ? s : { ...s, items: s.items.filter((_, i) => i !== idx) })
+        );
+    };
+
+    // DIRECTIONS handlers
+    const handleAddDirection = () => {
+        const trimmed = directionInput.trim();
+        if (!trimmed) return;
+        setDirections(dirs => [...dirs, trimmed]);
+        setDirectionInput('');
+    };
+    const handleRemoveDirection = idx => {
+        setDirections(dirs => dirs.filter((_, i) => i !== idx));
+    };
+
+    // file browse
     const handleBrowseClick = () => fileInputRef.current?.click();
-    const handleFileChange = (e) => {
+    const handleFileChange = e => {
         const file = e.target.files?.[0];
-        if (file) {
-            setImageFile(file);
-            setImageFileName(file.name);
+        if (!file) return;
+        setImageFile(file);
+        setImageFileName(file.name);
+    };
+
+    // drag & drop
+    const handleDragEnd = result => {
+        const { source, destination } = result;
+        if (!destination || source.index === destination.index) return;
+
+        // ingredients within section
+        const fromSec = sections.find(s => s.id === source.droppableId);
+        if (fromSec) {
+            setSections(secs =>
+                secs.map(s => {
+                    if (s.id !== source.droppableId) return s;
+                    return {
+                        ...s,
+                        items: Reorder(s.items, source.index, destination.index)
+                    };
+                })
+            );
+            return;
+        }
+
+        // directions
+        if (source.droppableId === 'directions') {
+            setDirections(dirs => Reorder(dirs, source.index, destination.index));
         }
     };
 
-    // categories from Supabase
-    const [categories, setCategories] = useState([]);
-    useEffect(() => {
-        async function fetchCategories() {
-            const {data, error} = await supabase
-                .from('categories')
-                .select('id, name')
-                .order('name', {ascending: true});
-            if (error) console.error('Error loading categories:', error);
-            else setCategories(data || []);
-        }
-
-        fetchCategories();
-    }, []);
-
-    // form submit
-    const handleSubmit = async (e) => {
+    // submit handler
+    const handleSubmit = async e => {
         e.preventDefault();
 
-        const safeName = name.trim().replace(/\s+/g, '_');
+        // --- 1) upload image file if any, then get public URL ---
         let imageUrl = null;
         if (imageFile) {
-            const filePath = `user_chris/${safeName}/${imageFileName}`;
-            const {data: uploadData, error: uploadError} = await supabase
+            const safeName = name.trim().replace(/\s+/g, '_');
+            // upload
+            const {
+                data: uploadData,
+                error: uploadError
+            } = await supabase
                 .storage
                 .from('recipe-images')
-                .upload(filePath, imageFile);
+                .upload(`user_chris/${safeName}/${imageFileName}`, imageFile);
+
             if (uploadError) {
                 console.error('Upload error:', uploadError);
                 return;
             }
-            const {data: publicData, error: publicError} = supabase
+
+            // retrieve public URL
+            const {
+                data: publicData,
+                error: publicError
+            } = supabase
                 .storage
                 .from('recipe-images')
                 .getPublicUrl(uploadData.path);
-            if (publicError) console.error('Error getting public URL:', publicError);
-            else imageUrl = publicData.publicUrl;
+
+            if (publicError) {
+                console.error('Error getting public URL:', publicError);
+            } else {
+                imageUrl = publicData.publicUrl;
+            }
         }
 
-        const {data: inserted, error: insertError} = await supabase
+        // --- 2) insert recipe row ---
+        const { data: rec, error: recErr } = await supabase
             .from('recipes')
             .insert([{
                 name,
                 description,
                 email,
                 category_id: categoryId,
-                ingredients,
-                directions,
                 image_url: imageUrl
-            }]);
+            }])
+            .select('id')
+            .single();
 
-        if (insertError) console.error('Error saving recipe:', insertError);
-        else console.log('Recipe saved:', inserted);
+        if (recErr) {
+            console.error(recErr);
+            return;
+        }
+        const recipeId = rec.id;
+
+        // --- 3) insert ingredient sections & items ---
+        for (let secIdx = 0; secIdx < sections.length; secIdx++) {
+            const s = sections[secIdx];
+            const { data: secRow, error: secErr } = await supabase
+                .from('ingredient_sections')
+                .insert([{
+                    recipe_id: recipeId,
+                    title: s.title,
+                    ordering: secIdx
+                }])
+                .select('id')
+                .single();
+
+            if (secErr) {
+                console.error(secErr);
+                return;
+            }
+
+            const sectionId = secRow.id;
+            if (s.items.length) {
+                const toInsert = s.items.map((desc, i) => ({
+                    section_id: sectionId,
+                    description: desc,
+                    ordering: i
+                }));
+                const { error: itemsErr } = await supabase
+                    .from('recipe_ingredients')
+                    .insert(toInsert);
+
+                if (itemsErr) {
+                    console.error(itemsErr);
+                    return;
+                }
+            }
+        }
+
+        // --- 4) insert directions ---
+        if (directions.length) {
+            const dirRows = directions.map((text, i) => ({
+                recipe_id: recipeId,
+                description: text,
+                ordering: i
+            }));
+            const { error: dirErr } = await supabase
+                .from('recipe_directions')
+                .insert(dirRows);
+
+            if (dirErr) console.error(dirErr);
+        }
+
+        alert('Recipe saved 🎉');
     };
 
     return (
@@ -128,81 +247,91 @@ const SubmitPage = () => {
                     <h1>Submit New Recipe</h1>
                     <form onSubmit={handleSubmit}>
 
-                        {/* Recipe Name */}
+                        {/* Name / Description / Email / Category */}
                         <div className="group">
-                            <label htmlFor="name">Recipe Name</label>
+                            <label>Recipe Name</label>
                             <input
-                                id="name"
-                                type="text"
-                                placeholder="Enter recipe name"
                                 value={name}
-                                onChange={(e) => setName(e.target.value)}
+                                onChange={e => setName(e.target.value)}
+                                placeholder="Enter recipe name"
                             />
                         </div>
-
-                        {/* Description */}
                         <div className="group">
-                            <label htmlFor="description">Description</label>
+                            <label>Description</label>
                             <textarea
-                                id="description"
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
                                 rows={4}
                                 placeholder="Enter description"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
                             />
                         </div>
-
-                        {/* Email */}
                         <div className="group">
-                            <label htmlFor="email">Your Email</label>
+                            <label>Your Email</label>
                             <input
-                                id="email"
                                 type="email"
-                                placeholder="Enter your email"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={e => setEmail(e.target.value)}
+                                placeholder="Enter your email"
                             />
                         </div>
-
-                        {/* Category */}
                         <div className="group">
-                            <label htmlFor="category">Category</label>
+                            <label>Category</label>
                             <select
-                                id="category"
                                 value={categoryId}
-                                onChange={(e) => setCategoryId(e.target.value)}
+                                onChange={e => setCategoryId(e.target.value)}
                             >
                                 <option value="">Select category</option>
-                                {categories.map((cat) => (
-                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                {categories.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* Ingredients */}
-                        <div className="group array">
-                            <label>Ingredients</label>
-                            <div className="array-row">
-                                <input
-                                    type="text"
-                                    placeholder="Enter ingredient"
-                                    value={ingredientInput}
-                                    onChange={(e) => setIngredientInput(e.target.value)}
-                                />
-                                <button className="add" type="button" onClick={handleAddIngredient}>
-                                    Add Ingredient
-                                </button>
-                            </div>
-                            {ingredients.length > 0 && (
-                                <Droppable droppableId="ingredients">
-                                    {(provided) => (
+                        {/* Ingredient Sections */}
+                        <h4>Ingredients</h4>
+                        {sections.map((sec, idx) => (
+                            <div key={sec.id} className="section-block">
+                                <div className="section-header">
+                                    <input
+                                        className="section-title"
+                                        value={sec.title}
+                                        onChange={e => handleSectionTitleChange(sec.id, e.target.value)}
+                                    />
+                                    {sections.length > 1 && (
+                                        <button
+                                            type="button"
+                                            className="remove-section"
+                                            onClick={() => handleRemoveSection(sec.id)}
+                                        >✕</button>
+                                    )}
+                                </div>
+
+                                <div className="group array array-row">
+                                    <input
+                                        value={sec.input}
+                                        onChange={e => handleSectionInputChange(sec.id, e.target.value)}
+                                        placeholder="Enter ingredient"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="add"
+                                        onClick={() => handleAddItem(sec.id)}
+                                    >Add</button>
+                                </div>
+
+                                <Droppable droppableId={sec.id}>
+                                    {provided => (
                                         <ul
                                             className="item-list"
                                             ref={provided.innerRef}
                                             {...provided.droppableProps}
                                         >
-                                            {ingredients.map((ing, idx) => (
-                                                <Draggable key={`ing-${idx}`} draggableId={`ing-${idx}`} index={idx}>
+                                            {sec.items.map((ing, i) => (
+                                                <Draggable
+                                                    key={`ing-${sec.id}-${i}`}
+                                                    draggableId={`ing-${sec.id}-${i}`}
+                                                    index={i}
+                                                >
                                                     {(prov, snap) => (
                                                         <li
                                                             ref={prov.innerRef}
@@ -214,10 +343,8 @@ const SubmitPage = () => {
                                                             <button
                                                                 type="button"
                                                                 className="remove"
-                                                                onClick={() => handleRemoveIngredient(idx)}
-                                                            >
-                                                                ×
-                                                            </button>
+                                                                onClick={() => handleRemoveItem(sec.id, i)}
+                                                            >×</button>
                                                         </li>
                                                     )}
                                                 </Draggable>
@@ -226,58 +353,65 @@ const SubmitPage = () => {
                                         </ul>
                                     )}
                                 </Droppable>
-                            )}
-                        </div>
+                            </div>
+                        ))}
 
-                        {/* Directions with DnD */}
+                        <button
+                            type="button"
+                            className="add-section"
+                            onClick={handleAddSection}
+                        >Add Section</button>
+
+                        {/* Directions */}
                         <div className="group array">
                             <label>Directions</label>
                             <div className="array-row">
                                 <input
-                                    type="text"
-                                    placeholder="Enter direction step"
                                     value={directionInput}
-                                    onChange={(e) => setDirectionInput(e.target.value)}
+                                    onChange={e => setDirectionInput(e.target.value)}
+                                    placeholder="Enter direction step"
                                 />
-                                <button className="add" type="button" onClick={handleAddDirection}>
-                                    Add Direction
-                                </button>
+                                <button
+                                    type="button"
+                                    className="add"
+                                    onClick={handleAddDirection}
+                                >Add Direction</button>
                             </div>
 
-                            {directions.length > 0 && (
-                                <Droppable droppableId="directions">
-                                    {(provided) => (
-                                        <ol
-                                            className="item-list"
-                                            ref={provided.innerRef}
-                                            {...provided.droppableProps}
-                                        >
-                                            {directions.map((dir, idx) => (
-                                                <Draggable key={dir} draggableId={`dir-${idx}`} index={idx}>
-                                                    {(prov, snap) => (
-                                                        <li
-                                                            ref={prov.innerRef}
-                                                            {...prov.draggableProps}
-                                                            {...prov.dragHandleProps}
-                                                            className={snap.isDragging ? 'dragging' : ''}
-                                                        >
-                                                            <span>{dir}</span>
-                                                            <button
-                                                                type="button"
-                                                                className="remove"
-                                                                onClick={() => handleRemoveDirection(idx)}
-                                                            >
-                                                                ×
-                                                            </button>
-                                                        </li>
-                                                    )}
-                                                </Draggable>
-                                            ))}
-                                            {provided.placeholder}
-                                        </ol>
-                                    )}
-                                </Droppable>
-                            )}
+                            <Droppable droppableId="directions">
+                                {provided => (
+                                    <ol
+                                        className="item-list"
+                                        ref={provided.innerRef}
+                                        {...provided.droppableProps}
+                                    >
+                                        {directions.map((step, i) => (
+                                            <Draggable
+                                                key={`dir-${i}`}
+                                                draggableId={`dir-${i}`}
+                                                index={i}
+                                            >
+                                                {(prov, snap) => (
+                                                    <li
+                                                        ref={prov.innerRef}
+                                                        {...prov.draggableProps}
+                                                        {...prov.dragHandleProps}
+                                                        className={snap.isDragging ? 'dragging' : ''}
+                                                    >
+                                                        <span>{step}</span>
+                                                        <button
+                                                            type="button"
+                                                            className="remove"
+                                                            onClick={() => handleRemoveDirection(i)}
+                                                        >×</button>
+                                                    </li>
+                                                )}
+                                            </Draggable>
+                                        ))}
+                                        {provided.placeholder}
+                                    </ol>
+                                )}
+                            </Droppable>
                         </div>
 
                         {/* Image Upload */}
@@ -285,34 +419,34 @@ const SubmitPage = () => {
                             <label>Image</label>
                             <div className="array-row">
                                 <input
-                                    type="text"
-                                    placeholder="No file chosen"
                                     readOnly
+                                    placeholder="No file chosen"
                                     value={imageFileName}
                                 />
-                                <button className="add" type="button" onClick={handleBrowseClick}>
-                                    Browse
-                                </button>
+                                <button
+                                    type="button"
+                                    className="add"
+                                    onClick={handleBrowseClick}
+                                >Browse</button>
                             </div>
                             <input
                                 type="file"
                                 accept="image/*"
                                 ref={fileInputRef}
-                                style={{display: 'none'}}
+                                style={{ display: 'none' }}
                                 onChange={handleFileChange}
                             />
                         </div>
 
-                        {/* Submit Button */}
+                        {/* Submit */}
                         <div className="submit-btn">
-                            <button className="add" type="submit">Submit Recipe</button>
+                            <button className="add" type="submit">
+                                Submit Recipe
+                            </button>
                         </div>
-
                     </form>
                 </div>
             </div>
         </DragDropContext>
     );
-};
-
-export default SubmitPage;
+}

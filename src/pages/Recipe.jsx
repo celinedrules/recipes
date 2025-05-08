@@ -7,81 +7,63 @@ import pluralize from 'pluralize';
 import "../components/Recipes/Recipes.scss";
 
 const Recipe = () => {
-    const { slug } = useParams();          // ← grab slug instead of id
+    const { slug } = useParams();
     const [recipe, setRecipe] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error,   setError]   = useState(null);
     const [multiplier, setMultiplier] = useState(1);
 
+    // (unchanged) your scaleIngredient helper
     function scaleIngredient(ingStr) {
-        // 1) Split off leading quantity (mixed or simple) from the rest
         const match = ingStr.match(/^([\d]+\s*\d*\/?\d*)\s+(.*)$/);
         if (!match) return ingStr;
         const [_, qtyStr, restPart] = match;
-
-        // 2) Parse that quantity exactly as a fraction
         let fraction;
-        try {
-            fraction = new Fraction(qtyStr);
-        } catch {
-            return ingStr; // if parsing fails, bail out
-        }
-
-        // 3) Multiply in the fraction domain (exact! no floats)
+        try { fraction = new Fraction(qtyStr); } catch { return ingStr; }
         const scaledF = fraction.mul(multiplier);
-
-        // 4) Extract numerator (n) and denominator (d) as BigInt
-        //    fraction.js stores sign in .s, numerator in .n, denominator in .d
-        const n = scaledF.s * scaledF.n; // BigInt
-        const d = scaledF.d;             // BigInt
-
-        // 5) Compute whole part and remainder
-        const whole = n / d;    // integer division, BigInt
-        const rem = n % d;    // BigInt remainder
-
-        // 6) Format mixed‑fraction string
+        const n = scaledF.s * scaledF.n;
+        const d = scaledF.d;
+        const whole = n / d;
+        const rem   = n % d;
         let prettyQty;
-        if (rem === 0n) {
-            // e.g. “2”
-            prettyQty = whole.toString();
-        } else if (whole === 0n) {
-            // e.g. “2/3”
-            prettyQty = `${rem.toString()}/${d.toString()}`;
-        } else {
-            // e.g. “1 2/3”
-            prettyQty = `${whole.toString()} ${rem.toString()}/${d.toString()}`;
-        }
-
-        // 7) Split the first word of restPart as the “unit”
+        if (rem === 0n) prettyQty = whole.toString();
+        else if (whole === 0n) prettyQty = `${rem.toString()}/${d.toString()}`;
+        else prettyQty = `${whole.toString()} ${rem.toString()}/${d.toString()}`;
         const [unit, ...desc] = restPart.trim().split(/\s+/);
-
-        // 8) Pluralize the unit only if the scaled numeric value > 1
-        //    and if it’s not an adjective (we skip words ending in “ing”)
         const numericValue = Number(n) / Number(d);
         const unitScaled =
             unit.toLowerCase().endsWith('ing')
                 ? unit
                 : (numericValue > 1 ? pluralize(unit) : unit);
-
-        // 9) Reassemble and return
         return `${prettyQty} ${unitScaled}${desc.length ? ' ' + desc.join(' ') : ''}`;
     }
 
     useEffect(() => {
-        const fetchRecipe = async () => {
+        async function fetchRecipe() {
             setLoading(true);
-
             const { data, error } = await supabase
-                .from("recipes")                 // your table name
+                .from("recipes")
                 .select(`
           *,
-          categories (
+          categories ( id, name ),
+          ingredient_sections (
             id,
-            name
+            title,
+            ordering,
+            recipe_ingredients (
+              id,
+              description,
+              ordering
+            )
+          ),
+          recipe_directions (
+            id,
+            description,
+            ordering
           )
         `)
-                .eq("slug", slug)                // ← filter by slug
-                .single();                       // expect exactly one row
+                .eq("slug", slug)
+                .single();
 
             if (error) {
                 console.error("Error fetching recipe:", error);
@@ -89,27 +71,21 @@ const Recipe = () => {
             } else {
                 setRecipe(data);
             }
-
             setLoading(false);
-        };
-
+        }
         fetchRecipe();
-    }, [slug]);                            // ← re-run when slug changes
+    }, [slug]);
 
-    if (loading)  return <p>Loading...</p>;
-    if (error)    return <p>Error loading recipe: {error.message}</p>;
-    if (!recipe)  return <p>No recipe found.</p>;
+    if (loading) return <p>Loading…</p>;
+    if (error)   return <p>Error: {error.message}</p>;
+    if (!recipe) return <p>No recipe found.</p>;
 
     return (
         <div className="recipe">
             <div className="container">
                 {/* Image column */}
                 <div className="image-col">
-                    <img
-                        src={recipe.image_url}
-                        alt={recipe.name}
-                        loading="lazy"
-                    />
+                    <img src={recipe.image_url} alt={recipe.name} loading="lazy" />
                 </div>
 
                 {/* Details column */}
@@ -123,31 +99,49 @@ const Recipe = () => {
                     </div>
 
                     <div className="servings-control">
-                        <button onClick={() => setMultiplier(1)} className={multiplier === 1 ? 'active' : ''}>1×
-                        </button>
-                        <button onClick={() => setMultiplier(2)} className={multiplier === 2 ? 'active' : ''}>2×
-                        </button>
-                        <button onClick={() => setMultiplier(3)} className={multiplier === 3 ? 'active' : ''}>3×
-                        </button>
+                        {[1,2,3].map(n => (
+                            <button
+                                key={n}
+                                onClick={() => setMultiplier(n)}
+                                className={multiplier===n ? "active" : ""}
+                            >{n}×</button>
+                        ))}
                     </div>
 
                     <div className="ingredients">
                         <h4>Ingredients</h4>
-                        <ul>
-                            {recipe.ingredients.map((ing, i) => (
-                                <li key={i}>{scaleIngredient(ing)}</li>
-                            ))}
-                        </ul>
+                        {recipe.ingredient_sections
+                            .sort((a,b) => a.ordering - b.ordering)
+                            .map(section => (
+                                <div key={section.id} className="ingredient-section">
+                                    <h5>{section.title}</h5>
+                                    <ul>
+                                        {section.recipe_ingredients
+                                            .sort((a,b) => a.ordering - b.ordering)
+                                            .map(item => (
+                                                <li key={item.id}>
+                                                    {scaleIngredient(item.description)}
+                                                </li>
+                                            ))
+                                        }
+                                    </ul>
+                                </div>
+                            ))
+                        }
                     </div>
 
                     <div className="directions">
                         <h4>Directions</h4>
-                        <ul>
-                            {recipe.directions.map((step, i) => (
-                                <li key={i}>{step}</li>
-                            ))}
-                        </ul>
+                        <ol>
+                            {recipe.recipe_directions
+                                .sort((a,b) => a.ordering - b.ordering)
+                                .map(step => (
+                                    <li key={step.id}>{step.description}</li>
+                                ))
+                            }
+                        </ol>
                     </div>
+
                 </div>
             </div>
         </div>
