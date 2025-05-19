@@ -23,7 +23,19 @@
     }
   }
 
-  img{
+  img {
+    display: block;
+    height: 100px;
+    margin-bottom: 10px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
+    overflow: hidden;
+    border-radius: 8px;
+    width: 100%;
+    object-fit: cover;
+  }
+
+
+  /*img{
     display: flex;
     justify-content: center;
     align-items: center;
@@ -34,7 +46,7 @@
     border-radius: 8px;
     width: 100%;
     object-fit: cover;
-  }
+  }*/
 
   .title{
     padding-top: 0.25rem;
