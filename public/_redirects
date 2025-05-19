@@ -1,1 +1,6 @@
-﻿/*    /index.html   200!
+﻿# Allow static assets to load normally
+/assets/*      /assets/:splat        200
+/images/*      /images/:splat        200
+
+# Everything else handled by the SPA
+/*             /index.html           200
