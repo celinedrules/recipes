@@ -51,7 +51,20 @@ const Hero = () => {
     }, []);
 
     const handleExploreLatest = () => navigate("/exploreLatest");
-    const handleGetRandomRecipe = () => { /* … */ };
+    const handleGetRandomRecipe = async () => {
+        const { data, error } = await supabase
+            .rpc("get_random_recipe");
+
+        if (error) {
+            console.error("Failed to fetch random recipe:", error);
+            return;
+        }
+
+        if (data && data.length > 0) {
+            const recipe = data[0];
+            navigate(`/recipe/${recipe.slug}`);
+        }
+    };
 
     return (
         <div className="hero">

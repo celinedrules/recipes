@@ -12,6 +12,7 @@ import SubmitPage from "./pages/SubmitPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RequireAuth from "./components/RequireAuth/RequireAuth.jsx";
 import SignUp from "./pages/SignUp.jsx";
+import ExploreLatest from "./pages/ExploreLatest.jsx";
 
 function App() {
     const [categories, setCategories] = useState([]);
@@ -43,6 +44,7 @@ function App() {
                     <Route path="categories" element={<ExploreCategories categories={categories}/>}/>
                     <Route path="categories/:categoryName" element={<CategoryPage/>}/>
                     <Route path="/recipe/:slug" element={<Recipe/>}/>
+                    <Route path="exploreLatest" element={<ExploreLatest />}/>
                     {/*<Route path="/submitPage" element={<SubmitPage/>}/>*/}
                     <Route
                         path="/submitPage"
