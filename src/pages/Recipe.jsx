@@ -1,23 +1,25 @@
 ﻿// src/pages/Recipe.jsx
-import { useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase.js";
+import {useParams} from "react-router-dom";
+import {useEffect, useState} from "react";
+import {supabase} from "../lib/supabase.js";
 import Fraction from 'fraction.js';
 import pluralize from 'pluralize';
 import "../components/Recipes/Recipes.scss";
+import StarRatingDisplay from "../components/Ratings/StarRatingDisplay.jsx";
 
 const Recipe = () => {
-    const { slug } = useParams();
+    const {slug} = useParams();
     const [recipe, setRecipe] = useState(null);
+    const [ratingSummary, setRatingSummary] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error,   setError]   = useState(null);
+    const [error, setError] = useState(null);
     const [multiplier, setMultiplier] = useState(1);
 
     // (unchanged) your scaleIngredient helper
     function scaleIngredient(ingStr) {
         // 0) normalize unicode fractions
-        const unicodeMap = { '¼':'1/4','½':'1/2','¾':'3/4','⅓':'1/3','⅔':'2/3','⅛':'1/8','⅜':'3/8' };
-        for (const [u,a] of Object.entries(unicodeMap)) {
+        const unicodeMap = {'¼': '1/4', '½': '1/2', '¾': '3/4', '⅓': '1/3', '⅔': '2/3', '⅛': '1/8', '⅜': '3/8'};
+        for (const [u, a] of Object.entries(unicodeMap)) {
             ingStr = ingStr.replaceAll(u, a);
         }
 
@@ -34,13 +36,16 @@ const Recipe = () => {
         // helper: scale one qty-string (e.g. "1 1/3" or "2/3")
         const scaleOne = (q) => {
             let f;
-            try { f = new Fraction(q.trim()); }
-            catch { return q.trim(); }
+            try {
+                f = new Fraction(q.trim());
+            } catch {
+                return q.trim();
+            }
             const scaled = f.mul(multiplier);    // uses closure multiplier
             const n = scaled.s * scaled.n;       // BigInt numerator
             const d = scaled.d;                  // BigInt denominator
             const whole = n / d;
-            const rem   = n % d;
+            const rem = n % d;
 
             if (rem === 0n) return whole.toString();
             if (whole === 0n) return `${rem.toString()}/${d.toString()}`;
@@ -51,7 +56,7 @@ const Recipe = () => {
         let prettyQty;
         const rangeMatch = qtyPart.match(/^(.+?)[–-](.+)$/);
         if (rangeMatch) {
-            const [ , a, b ] = rangeMatch;
+            const [, a, b] = rangeMatch;
             prettyQty = `${scaleOne(a)}-${scaleOne(b)}`;
         } else {
             prettyQty = scaleOne(qtyPart);
@@ -61,7 +66,7 @@ const Recipe = () => {
         const [unit, ...desc] = restPart.trim().split(/\s+/);
         // use midpoint for a range, or the single value
         const numeric = rangeMatch
-            ? ( Number(new Fraction(rangeMatch[1])) + Number(new Fraction(rangeMatch[2])) )/2 * multiplier
+            ? (Number(new Fraction(rangeMatch[1])) + Number(new Fraction(rangeMatch[2]))) / 2 * multiplier
             : Number(new Fraction(qtyPart)) * multiplier;
 
         const unitScaled =
@@ -76,43 +81,69 @@ const Recipe = () => {
     useEffect(() => {
         async function fetchRecipe() {
             setLoading(true);
-            const { data, error } = await supabase
+
+            // Get the recipe
+            const { data: recipeData, error: recipeError } = await supabase
                 .from("recipes")
                 .select(`
-          *,
-          categories ( id, name ),
-          ingredient_sections (
-            id,
-            title,
-            ordering,
-            recipe_ingredients (
-              id,
-              description,
-              ordering
-            )
-          ),
-          recipe_directions (
-            id,
-            description,
-            ordering
-          )
-        `)
+                *,
+                categories ( id, name ),
+                ingredient_sections (
+                    id,
+                    title,
+                    ordering,
+                    recipe_ingredients (
+                        id,
+                        description,
+                        ordering
+                    )
+                ),
+                recipe_directions (
+                    id,
+                    description,
+                    ordering
+                )
+            `)
                 .eq("slug", slug)
                 .single();
 
-            if (error) {
-                console.error("Error fetching recipe:", error);
-                setError(error);
-            } else {
-                setRecipe(data);
+            // Get rating summary (only if recipe was found)
+            let ratingData = null;
+            let ratingError = null;
+
+            if (recipeData?.id) {
+                const result = await supabase
+                    .from("recipe_rating_summary")
+                    .select("average_rating, rating_count")
+                    .eq("recipe_id", recipeData.id)
+                    .single();
+                ratingData = result.data;
+                ratingError = result.error;
             }
+
+            if (recipeError) {
+                console.error("Error fetching recipe:", recipeError);
+                setError(recipeError);
+            } else {
+                setRecipe(recipeData);
+            }
+
+            if (ratingError) {
+                console.warn("Rating not found or failed to load:", ratingError);
+                setRatingSummary(null);
+            } else {
+                setRatingSummary(ratingData);
+            }
+
             setLoading(false);
         }
+
         fetchRecipe();
     }, [slug]);
 
+
     if (loading) return <p>Loading…</p>;
-    if (error)   return <p>Error: {error.message}</p>;
+    if (error) return <p>Error: {error.message}</p>;
     if (!recipe) return <p>No recipe found.</p>;
 
     return (
@@ -120,13 +151,21 @@ const Recipe = () => {
             <div className="container">
                 {/* Image column */}
                 <div className="image-col">
-                    <img src={recipe.image_url} alt={recipe.name} loading="lazy" />
+                    <img src={recipe.image_url} alt={recipe.name} loading="lazy"/>
                 </div>
 
                 {/* Details column */}
                 <div className="details-col">
                     <h1>{recipe.name}</h1>
                     <div className="category">{recipe.categories.name}</div>
+                    {ratingSummary && (
+                        <StarRatingDisplay rating={parseFloat(ratingSummary.average_rating)} />
+                    )}
+                    {ratingSummary?.rating_count > 0 && (
+                        <p style={{ color: "#777", fontSize: "0.9rem" }}>
+                            Based on {ratingSummary.rating_count} {ratingSummary.rating_count === 1 ? 'rating' : 'ratings'}
+                        </p>
+                    )}
 
                     <div className="description">
                         <h4>Description</h4>
@@ -134,11 +173,11 @@ const Recipe = () => {
                     </div>
 
                     <div className="servings-control">
-                        {[1,2,3].map(n => (
+                        {[1, 2, 3].map(n => (
                             <button
                                 key={n}
                                 onClick={() => setMultiplier(n)}
-                                className={multiplier===n ? "active" : ""}
+                                className={multiplier === n ? "active" : ""}
                             >{n}×</button>
                         ))}
                     </div>
@@ -146,13 +185,13 @@ const Recipe = () => {
                     <div className="ingredients">
                         <h4>Ingredients</h4>
                         {recipe.ingredient_sections
-                            .sort((a,b) => a.ordering - b.ordering)
+                            .sort((a, b) => a.ordering - b.ordering)
                             .map(section => (
                                 <div key={section.id} className="ingredient-section">
                                     <h5>{section.title}</h5>
                                     <ul>
                                         {section.recipe_ingredients
-                                            .sort((a,b) => a.ordering - b.ordering)
+                                            .sort((a, b) => a.ordering - b.ordering)
                                             .map(item => (
                                                 <li key={item.id}>
                                                     {scaleIngredient(item.description)}
@@ -169,7 +208,7 @@ const Recipe = () => {
                         <h4>Directions</h4>
                         <ol>
                             {recipe.recipe_directions
-                                .sort((a,b) => a.ordering - b.ordering)
+                                .sort((a, b) => a.ordering - b.ordering)
                                 .map(step => (
                                     <li key={step.id}>{step.description}</li>
                                 ))
