@@ -31,6 +31,7 @@ const Header = () => {
     const handleSearch = (e) => {
         e.preventDefault();
         navigate(`/search?query=${encodeURIComponent(searchTerm)}`);
+        setSearchTerm("");
     };
 
     const handleLogout = async () => {

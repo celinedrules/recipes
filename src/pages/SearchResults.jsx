@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import RecipeList from "../components/Recipes/RecipeList.jsx";
 
 const SearchResults = () => {
     const [searchParams] = useSearchParams();
@@ -32,20 +33,11 @@ const SearchResults = () => {
 
     return (
         <div className="search-results">
-            <h1>Search Results for: "{query}"</h1>
+            <h1>Search Results for "{query}"</h1>
             {loading ? (
                 <p>Loading...</p>
             ) : results.length > 0 ? (
-                <ul>
-                    {results.map((recipe) => (
-                        <li key={recipe.id}>
-                            <a href={`/recipe/${recipe.slug}`}>
-                                <img src={recipe.image_url} alt={recipe.name} />
-                                <p>{recipe.name}</p>
-                            </a>
-                        </li>
-                    ))}
-                </ul>
+                <RecipeList recipes={results} />
             ) : (
                 <p>No recipes found.</p>
             )}
