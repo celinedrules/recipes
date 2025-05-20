@@ -6,12 +6,12 @@ import Fraction from 'fraction.js';
 import pluralize from 'pluralize';
 import "../components/Recipes/Recipes.scss";
 import StarRatingDisplay from "../components/Ratings/StarRatingDisplay.jsx";
+import ReviewSection from "../components/Ratings/ReviewSection.jsx";
 
 const Recipe = () => {
     const { slug } = useParams();
     const [recipe, setRecipe] = useState(null);
     const [ratingSummary, setRatingSummary] = useState(null);
-    const [userRating, setUserRating] = useState(null);
     const [sessionUser, setSessionUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -95,19 +95,7 @@ const Recipe = () => {
             setRatingSummary(ratingData);
 
             const { data: auth } = await supabase.auth.getUser();
-            const user = auth?.user;
-            setSessionUser(user);
-
-            if (user) {
-                const { data: existing } = await supabase
-                    .from("recipe_reviews")
-                    .select("rating")
-                    .eq("recipe_id", recipeData.id)
-                    .eq("user_id", user.id)
-                    .single();
-
-                if (existing) setUserRating(existing.rating);
-            }
+            setSessionUser(auth?.user);
 
             setLoading(false);
         }
@@ -176,36 +164,7 @@ const Recipe = () => {
                         </ol>
                     </div>
 
-                    {sessionUser ? (
-                        <div className="user-rating">
-                            <h4>Your Rating</h4>
-                            <StarRatingDisplay
-                                rating={userRating || 0}
-                                editable={true}
-                                onRate={async (newRating) => {
-                                    setUserRating(newRating);
-                                    await supabase.from("recipe_reviews").upsert({
-                                        recipe_id: recipe.id,
-                                        user_id: sessionUser.id,
-                                        rating: newRating
-                                    }, { onConflict: ['recipe_id', 'user_id'] });
-
-                                    const { data: updatedSummary } = await supabase
-                                        .from("recipe_rating_summary")
-                                        .select("average_rating, rating_count")
-                                        .eq("recipe_id", recipe.id)
-                                        .single();
-
-                                    setRatingSummary(updatedSummary);
-                                }}
-                            />
-                        </div>
-                    ) : (
-                        <p style={{ marginTop: "2rem", color: "#666", fontStyle: "italic" }}>
-                            Log in to rate this recipe.
-                        </p>
-                    )}
-
+                    <ReviewSection recipeId={recipe.id} sessionUser={sessionUser} />
                 </div>
             </div>
         </div>
