@@ -87,7 +87,7 @@ const Recipe = () => {
             setRecipe(recipeData);
 
             const { data: ratingData } = await supabase
-                .from("recipe_rating_summary")
+                .from("recipe_review_summary")
                 .select("average_rating, rating_count")
                 .eq("recipe_id", recipeData.id)
                 .single();
@@ -100,7 +100,7 @@ const Recipe = () => {
 
             if (user) {
                 const { data: existing } = await supabase
-                    .from("recipe_ratings")
+                    .from("recipe_reviews")
                     .select("rating")
                     .eq("recipe_id", recipeData.id)
                     .eq("user_id", user.id)
@@ -184,7 +184,7 @@ const Recipe = () => {
                                 editable={true}
                                 onRate={async (newRating) => {
                                     setUserRating(newRating);
-                                    await supabase.from("recipe_ratings").upsert({
+                                    await supabase.from("recipe_reviews").upsert({
                                         recipe_id: recipe.id,
                                         user_id: sessionUser.id,
                                         rating: newRating
