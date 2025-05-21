@@ -14,6 +14,8 @@ import RequireAuth from "./components/RequireAuth/RequireAuth.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import ExploreLatest from "./pages/ExploreLatest.jsx";
 import SearchResults from "./pages/SearchResults.jsx";
+import {ToastContainer} from "react-toastify";
+//import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
     const [categories, setCategories] = useState([]);
@@ -58,6 +60,7 @@ function App() {
                     <Route path="/login" element={<LoginPage/>}/>
                     <Route path="/signup" element={<SignUp/>}/>
                 </Routes>
+                <ToastContainer position="top-center" autoClose={3000} />
                 <Footer/>
             </div>
         </Router>

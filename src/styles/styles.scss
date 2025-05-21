@@ -5,3 +5,14 @@
   max-width: 1200px;
   margin: 0 auto;
 }
+
+.Toastify__toast {
+  /* This targets the background behind the progress fill */
+   --toastify-color-progress-success: #333;
+}
+
+.Toastify__progress-bar {
+  background-color: #666 !important; /* the actual filled portion */
+}
+
+
