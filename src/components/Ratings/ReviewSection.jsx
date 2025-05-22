@@ -2,8 +2,6 @@
 import {useEffect, useState} from "react";
 import {supabase} from "../../lib/supabase.js";
 import {toast} from 'react-toastify';
-import {FaRegStar, FaStar} from "react-icons/fa";
-import StarRatingInput from "./StarRatingInput.jsx";
 import ReviewItem from "./ReviewItem.jsx";
 import ReviewForm from "./ReviewForm.jsx";
 
@@ -73,7 +71,21 @@ const ReviewSection = ({recipeId, sessionUser}) => {
         setRatingSummary(summary);
         setUserReview({rating: userReview.rating, comment: commentInput.trim()});
 
-        toast.success("Your review has been saved!");
+        toast.success("Your review has been saved!", {
+            icon: () => (
+                <img
+                    src="/images/review-success.png"
+                    alt="Success"
+                    style={{
+                        width: 28, // try 26–28
+                        height: 28,
+                        padding: 2, // prevents clipping inside toast
+                        objectFit: "contain"
+                    }}
+                />
+            )
+        });
+
 
         setTimeout(() => setIsSubmitting(false), 3000);
     };

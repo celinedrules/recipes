@@ -12,7 +12,13 @@
 }
 
 .Toastify__progress-bar {
-  background-color: #666 !important; /* the actual filled portion */
+  background-color: #ddd !important; /* the actual filled portion */
 }
+
+.Toastify__toast--success {
+  background-color: #3a3a3a;
+  color: #ddd;
+}
+
 
 
