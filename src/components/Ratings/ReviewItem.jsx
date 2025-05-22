@@ -2,8 +2,9 @@
 import { FaStar, FaRegStar } from "react-icons/fa";
 import { useState } from "react";
 
-const ReviewItem = ({ rating, comment = "", index }) => {
+const ReviewItem = ({ rating, comment, index }) => {
     const [expanded, setExpanded] = useState(false);
+    const safeComment = comment || "";
 
     const toggleExpanded = () => setExpanded((prev) => !prev);
 
@@ -13,13 +14,13 @@ const ReviewItem = ({ rating, comment = "", index }) => {
         </span>
     );
 
-    const isLong = comment.length > 200;
-    const displayComment = expanded || !isLong ? comment : comment.slice(0, 200) + "... ";
+    const isLong = safeComment.length > 200;
+    const displayComment = expanded || !isLong ? safeComment : safeComment.slice(0, 200) + "... ";
 
     return (
         <div className="review" style={{ marginBottom: "1rem", fontSize: "1rem" }}>
             {renderStars(rating)}
-            {comment && (
+            {safeComment && (
                 <span
                     style={{
                         color: "#666",
