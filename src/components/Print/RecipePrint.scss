@@ -1,0 +1,124 @@
+/* Print & PDF shared layout */
+.print-only,
+.print-pdf-target,
+.recipe-print {
+  width: 760px;
+  padding: 0.75in 0.75in 0.75in 0.5in;
+  background: #fffef9;
+  color: #000;
+  font-family: Georgia, serif;
+  border: 1px solid #ddd;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+
+  .left {
+    width: 40%;
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .meta {
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      margin-top: 1rem;
+    }
+
+    h3 {
+      margin-top: 0.5rem;
+      font-weight: bold;
+    }
+
+    ul {
+      padding-left: 1.2rem;
+      margin: 0.5rem 0;
+    }
+
+    li {
+      margin-bottom: 0.25rem;
+    }
+
+    .notes {
+      border: 1px solid #ccc;
+      background: #fffbe0;
+      padding: 0.75rem;
+      margin-top: 1rem;
+    }
+  }
+
+  .right {
+    width: 56%;
+    overflow-wrap: break-word;   // ✅ ensures long words break
+    word-break: break-word;      // ✅ safety fallback
+    overflow: hidden;            // ✅ prevents layout from expanding
+    box-sizing: border-box;      // ✅ makes width behave properly
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    ol {
+      padding-left: 1.2rem;
+      margin: 0;
+    }
+
+    li {
+      margin-bottom: 0.75rem;
+      line-height: 1.4;
+    }
+  }
+}
+
+/* Screen-only: hide .print-only content */
+.print-only {
+  display: none;
+}
+
+/* Print visibility and isolation */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-only,
+  .print-only * {
+    visibility: visible !important;
+  }
+
+  .print-only {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 9999;
+  }
+
+  .recipe {
+    display: none !important;
+  }
+}

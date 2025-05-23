@@ -152,3 +152,48 @@
     }
   }
 }
+
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end; // 👈 this aligns button with bottom of text block
+  margin-bottom: 1rem;
+
+  .title-category {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 2rem;
+  }
+
+  .category {
+    font-style: italic;
+    color: #6c757d;
+    font-size: 1rem;
+    margin-top: 0.25rem;
+  }
+
+  .print-button {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 0.25rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    align-self: flex-end;
+
+    &:hover {
+      background-color: #0056b3;
+    }
+
+    @media print {
+      display: none;
+    }
+  }
+}
