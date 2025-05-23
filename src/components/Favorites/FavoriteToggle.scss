@@ -1,0 +1,17 @@
+.favorite-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.75rem;
+  line-height: 1;
+  padding: 0;
+  transition: transform 0.2s;
+
+  &.active {
+    color: red;
+  }
+
+  &:hover {
+    transform: scale(1.1);
+  }
+}

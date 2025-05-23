@@ -10,6 +10,7 @@ import "../components/Print/RecipePrint.scss";
 import StarRatingDisplay from "../components/Ratings/StarRatingDisplay.jsx";
 import ReviewSection from "../components/Ratings/ReviewSection.jsx";
 import RecipePrint from "../components/Print/RecipePrint.jsx";
+import FavoriteToggle from "../components/Favorites/FavoriteToggle.jsx";
 
 const Recipe = () => {
     const { slug } = useParams();
@@ -150,7 +151,10 @@ const Recipe = () => {
             <div className="recipe">
                 <div className="container">
                     <div className="image-col">
-                        <img src={recipe.image_url} alt={recipe.name} loading="lazy" />
+                        <div className="image-wrapper">
+                            <img src={recipe.image_url} alt={recipe.name} loading="lazy" />
+                            <FavoriteToggle recipeId={recipe.id} sessionUser={sessionUser} />
+                        </div>
                     </div>
 
                     <div className="details-col">
