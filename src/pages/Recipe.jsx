@@ -1,7 +1,7 @@
 ﻿// src/pages/Recipe.jsx
-import { useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase.js";
+import {useParams} from "react-router-dom";
+import {useEffect, useState} from "react";
+import {supabase} from "../lib/supabase.js";
 import Fraction from "fraction.js";
 import pluralize from "pluralize";
 import html2pdf from "html2pdf.js";
@@ -13,7 +13,7 @@ import RecipePrint from "../components/Print/RecipePrint.jsx";
 import FavoriteToggle from "../components/Favorites/FavoriteToggle.jsx";
 
 const Recipe = () => {
-    const { slug } = useParams();
+    const {slug} = useParams();
     const [recipe, setRecipe] = useState(null);
     const [ratingSummary, setRatingSummary] = useState(null);
     const [sessionUser, setSessionUser] = useState(null);
@@ -35,27 +35,37 @@ const Recipe = () => {
             ingStr = ingStr.replaceAll(u, a);
         }
 
-        const match = ingStr.match(/^([\d\s/]+(?:[–-][\d\s/]+)?)\s+(.*)$/);
+        // Extract only the first numeric or fraction token
+        // Examples:
+        // "2 12 oz cans" → qtyPart="2", restPart="12 oz cans"
+        // "1 1/2 cups sugar" → qtyPart="1 1/2", restPart="cups sugar"
+        const match = ingStr.match(/^(\d+(?:\s+\d+\/\d+)?|\d+\/\d+)\b\s*(.*)$/);
         if (!match) return ingStr;
 
         let [, qtyPart, restPart] = match;
 
+        // 🧠 Sanitize: make sure qtyPart is numeric or fraction only
+        qtyPart = qtyPart.trim();
+        if (!/^[\d\s/]+$/.test(qtyPart)) {
+            qtyPart = "0";
+        }
+
         const scaleOne = (q) => {
-            let f;
             try {
-                f = new Fraction(q.trim());
+                const f = new Fraction(q.trim() || "0");
+                const scaled = f.mul(multiplier);
+                const n = scaled.s * scaled.n;
+                const d = scaled.d;
+                const whole = n / d;
+                const rem = n % d;
+
+                if (rem === 0n) return whole.toString();
+                if (whole === 0n) return `${rem.toString()}/${d.toString()}`;
+                return `${whole.toString()} ${rem.toString()}/${d.toString()}`;
             } catch {
+                console.warn("Invalid fraction input:", q);
                 return q.trim();
             }
-            const scaled = f.mul(multiplier);
-            const n = scaled.s * scaled.n;
-            const d = scaled.d;
-            const whole = n / d;
-            const rem = n % d;
-
-            if (rem === 0n) return whole.toString();
-            if (whole === 0n) return `${rem.toString()}/${d.toString()}`;
-            return `${whole.toString()} ${rem.toString()}/${d.toString()}`;
         };
 
         let prettyQty;
@@ -68,17 +78,22 @@ const Recipe = () => {
         }
 
         const [unit, ...desc] = restPart.trim().split(/\s+/);
+
+// 🧠 Check if the first token is numeric (like "12" or "10.5")
+        const isNumericUnit = !isNaN(parseFloat(unit));
+
         const numeric = rangeMatch
-            ? (Number(new Fraction(rangeMatch[1])) + Number(new Fraction(rangeMatch[2]))) /
-            2 *
-            multiplier
+            ? ((Number(new Fraction(rangeMatch[1])) + Number(new Fraction(rangeMatch[2]))) / 2) * multiplier
             : Number(new Fraction(qtyPart)) * multiplier;
 
-        const unitScaled = unit.toLowerCase().endsWith("ing")
-            ? unit
-            : numeric > 1
-                ? pluralize(unit)
-                : unit;
+        const unitScaled = isNumericUnit
+            ? unit // don’t pluralize numbers
+            : unit.toLowerCase().endsWith("ing")
+                ? unit
+                : numeric > 1
+                    ? pluralize(unit)
+                    : unit;
+
         return `${prettyQty} ${unitScaled}${desc.length ? " " + desc.join(" ") : ""}`;
     }
 
@@ -86,7 +101,7 @@ const Recipe = () => {
         async function fetchRecipe() {
             setLoading(true);
 
-            const { data: recipeData, error: recipeError } = await supabase
+            const {data: recipeData, error: recipeError} = await supabase
                 .from("recipes")
                 .select(
                     `*,
@@ -110,7 +125,7 @@ const Recipe = () => {
 
             setRecipe(recipeData);
 
-            const { data: ratingData } = await supabase
+            const {data: ratingData} = await supabase
                 .from("recipe_review_summary")
                 .select("average_rating, rating_count")
                 .eq("recipe_id", recipeData.id)
@@ -118,7 +133,7 @@ const Recipe = () => {
 
             setRatingSummary(ratingData);
 
-            const { data: auth } = await supabase.auth.getUser();
+            const {data: auth} = await supabase.auth.getUser();
             setSessionUser(auth?.user);
 
             setLoading(false);
@@ -133,9 +148,9 @@ const Recipe = () => {
             .set({
                 margin: [0.5, 0.5, 0.5, 0.5], // top, left, bottom, right
                 filename: `${recipe.name}.pdf`,
-                image: { type: "jpeg", quality: 1 },
-                html2canvas: { scale: 3, useCORS: true },
-                jsPDF: { unit: "in", format: "letter", orientation: "portrait" }
+                image: {type: "jpeg", quality: 1},
+                html2canvas: {scale: 3, useCORS: true},
+                jsPDF: {unit: "in", format: "letter", orientation: "portrait"}
             })
             .from(element)
             .save();
@@ -152,8 +167,8 @@ const Recipe = () => {
                 <div className="container">
                     <div className="image-col">
                         <div className="image-wrapper">
-                            <img src={recipe.image_url} alt={recipe.name} loading="lazy" />
-                            <FavoriteToggle recipeId={recipe.id} sessionUser={sessionUser} />
+                            <img src={recipe.image_url} alt={recipe.name} loading="lazy"/>
+                            <FavoriteToggle recipeId={recipe.id} sessionUser={sessionUser}/>
                         </div>
                     </div>
 
@@ -178,12 +193,12 @@ const Recipe = () => {
                             rating={parseFloat(ratingSummary?.average_rating || 0)}
                         />
                         {ratingSummary?.rating_count > 0 ? (
-                            <p style={{ color: "#777", fontSize: "0.9rem" }}>
+                            <p style={{color: "#777", fontSize: "0.9rem"}}>
                                 Based on {ratingSummary.rating_count}{" "}
                                 {ratingSummary.rating_count === 1 ? "rating" : "ratings"}
                             </p>
                         ) : (
-                            <p style={{ color: "#777", fontSize: "0.9rem" }}>No ratings yet</p>
+                            <p style={{color: "#777", fontSize: "0.9rem"}}>No ratings yet</p>
                         )}
 
                         <div className="description">
@@ -234,13 +249,13 @@ const Recipe = () => {
                             </ol>
                         </div>
 
-                        <ReviewSection recipeId={recipe.id} sessionUser={sessionUser} />
+                        <ReviewSection recipeId={recipe.id} sessionUser={sessionUser}/>
                     </div>
                 </div>
             </div>
 
             {/* ✅ For PDF generation only (hidden from screen and print) */}
-            <div style={{ display: "none" }}>
+            <div style={{display: "none"}}>
                 <div className="print-pdf-target">
                     <RecipePrint
                         recipe={recipe}
